@@ -1,0 +1,49 @@
+import "@fluencelabs/aqua-lib/builtin.aqua"
+
+data Card:
+    suit: string
+    denomination: string
+
+data Player:
+    peer_id: PeerId
+    playing: bool
+
+service WaitingRoom("WaitingRoom"):
+    join(peer_id: PeerId) -> bool
+    request() -> []Player
+
+service Cribbage("Cribbage"):
+    confirm() -> bool
+    deal(cards: []Card) -> bool
+    starter() -> Card
+    -- peg(peer_id: PeerId) -> Card
+
+func getRandom(relay_id: PeerId) -> u64:
+    on relay_id:
+        ttl <- Peer.timestamp_ms()
+    <- ttl
+
+func joinGame(hub_peer_id: PeerId) -> bool:
+    on hub_peer_id:
+        res <- WaitingRoom.join(%init_peer_id%)
+    <- res
+
+func request(hub_peer_id: PeerId) -> []Player:
+    on hub_peer_id:
+        res <- WaitingRoom.request()
+    <- res
+
+func confirmGame(peer_id: PeerId) -> bool:
+    on peer_id:
+        res <- Cribbage.confirm()
+    <- res
+
+func dealRound(peer_id: PeerId, cards: []Card) -> bool:
+    on peer_id:
+        res <- Cribbage.deal(cards)
+    <- res
+
+func pullStarter(peer_id: PeerId) -> Card:
+    on peer_id:
+        res <- Cribbage.starter()
+    <- res
