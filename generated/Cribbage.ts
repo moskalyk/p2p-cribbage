@@ -17,7 +17,7 @@ import {
 // Services
 
 export interface CribbageDef {
-    confirm: (callParams: CallParams$$<null>) => boolean | Promise<boolean>;
+    confirm: (peer_id: string, callParams: CallParams$$<'peer_id'>) => boolean | Promise<boolean>;
     deal: (cards: { denomination: string; suit: string; }[], callParams: CallParams$$<'cards'>) => boolean | Promise<boolean>;
     starter: (callParams: CallParams$$<null>) => { denomination: string; suit: string; } | Promise<{ denomination: string; suit: string; }>;
 }
@@ -38,7 +38,13 @@ export function registerCribbage(...args: any) {
             "confirm" : {
                 "tag" : "arrow",
                 "domain" : {
-                    "tag" : "nil"
+                    "tag" : "labeledProduct",
+                    "fields" : {
+                        "peer_id" : {
+                            "tag" : "scalar",
+                            "name" : "string"
+                        }
+                    }
                 },
                 "codomain" : {
                     "tag" : "unlabeledProduct",
@@ -325,7 +331,7 @@ export function confirmGame(...args: any) {
                        )
                        (xor
                         (seq
-                         (call peer_id ("Cribbage" "confirm") [] res)
+                         (call peer_id ("Cribbage" "confirm") [%init_peer_id%] res)
                          (call -relay- ("op" "noop") [])
                         )
                         (seq

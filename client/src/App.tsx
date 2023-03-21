@@ -5,7 +5,7 @@ import { Fluence } from '@fluencelabs/fluence';
 import { krasnodar } from '@fluencelabs/fluence-network-environment';
 import { sequence } from '0xsequence'
 
-import {requestPlayers, playGame, joinGame, dealRound} from './generated/Cribbage'
+import {requestPlayers, playGame, joinGame, dealRound, confirmGame} from './generated/Cribbage'
 
 import {
   registerCribbage
@@ -144,7 +144,7 @@ function GameRoom (props: any) {
       <br/>
       <br/>
       <p onClick={async () => {
-          await joinGame(HUB_PEER_ID)
+          await joinGame(HUB_PEER_ID, {ttl: 20000})
           props.setAppState(4)
         }} id='menu-1' className='menu-option-1 animate__animated animate__slideInDown'>find a game</p>
       <p onClick={() => props.setAppState(2)} className='menu-option-2 animate__animated animate__slideInDown'>choose color</p>
@@ -346,26 +346,35 @@ const Sound = (props: any) => {
 //   </>
 //   )
 // }
-const HUB_PEER_ID = "12D3KooWKSr7jUwYD7rpYva6jFhp2o2NhcotkgEHmu31Tghchpcy"
+const HUB_PEER_ID = "12D3KooWDdWc6A2533TBq2wuaQQ2avMK3ihNK9ECUroWcoHNubNx"
 
 function WaitingRoom(props: any){
 
   const [waitingRoomFoes, setWaitingRoomFoes] = React.useState<any>([])
 
+  const [requestPlayersListener, setRequestPlayersListener] = React.useState<any>(false)
   React.useEffect(() => {
-    
-    setInterval(async () => {
-      const res = await requestPlayers(HUB_PEER_ID)
-      console.log(res)
-      setWaitingRoomFoes(res)
-    }, 2000)
+
+    if(!requestPlayersListener) {
+
+      setInterval(async () => {
+        const res = await requestPlayers(HUB_PEER_ID)
+        console.log(res)
+        setWaitingRoomFoes(res)
+      }, 2000)
+      setRequestPlayersListener(true)
+    }
+
     // setTimeout(() => {
       // props.setAppState(6)
     // }, 400*10)
   })
 
-  const clickToPlay = (peer_id: any) => {
+  const clickToPlay = async (peer_id: any) => {
     console.log(peer_id)
+    const res = await confirmGame(peer_id, {ttl: 20000})
+    console.log(res)
+    if(res) props.setAppState(6)
   }
 
   return(
@@ -386,7 +395,7 @@ function WaitingRoom(props: any){
           if(!foe.playing) {
               clickToPlay(foe.peer_id)
           }
-      }}>{ir(foe.peer_id)}</p>
+      }}>{(foe.peer_id)}</p>
       })}
       <p className='return-bottom animate__animated animate__slideInUp' onClick={() => props.setAppState(1)}>return</p>
     </>
@@ -415,6 +424,7 @@ function LeaderBoard(props: any){
 function App() {
 
   const [appState, setAppState] = React.useState(0)
+  const [init, setInit] = React.useState(false)
 
   React.useEffect(() => {
     connect()
@@ -422,9 +432,13 @@ function App() {
 
   const connect = async () => {
     try {
-      await Fluence.start({
-        connectTo: krasnodar[0]
-      })
+      if(!init){
+        await Fluence.start({
+          connectTo: krasnodar[1]
+        })
+        setInit(true)
+      }
+
     }catch(err){
       console.log(err)
     }
@@ -432,7 +446,16 @@ function App() {
     console.log('connected:', Fluence.getStatus().peerId)
 
     registerCribbage({
-      confirm: () => {
+      confirm: async (peer_id: any) => {
+        console.log('being called on')
+        const wallet = sequence.getWallet()
+        const signer = wallet.getSigner()
+        // Prepare the message string
+        const message = `I accept to play ${ir(peer_id)}`
+
+        // Sign the message
+        const signature = await signer.signMessage(message)
+        setAppState(6)
         return true
       },
       deal: () => {

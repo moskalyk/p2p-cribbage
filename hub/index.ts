@@ -10,7 +10,7 @@ const Hyperbee = require('hyperbee');
 
 (async () => {
     await Fluence.start({
-        connectTo: krasnodar[0]
+        connectTo: krasnodar[1]
     })
     const corestore = new Corestore('./db')
     const peers = corestore.get({name: "peers", valueEncoding: 'json'})

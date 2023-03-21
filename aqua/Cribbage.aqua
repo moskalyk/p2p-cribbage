@@ -14,7 +14,7 @@ service WaitingRoom("WaitingRoom"):
     play(peer_id: PeerId) -> bool
 
 service Cribbage("Cribbage"):
-    confirm() -> bool
+    confirm(peer_id: PeerId) -> bool
     deal(cards: []Card) -> bool
     starter() -> Card
     -- peg(peer_id: PeerId) -> Card
@@ -41,7 +41,7 @@ func playGame(hub_peer_id: PeerId) -> bool:
 
 func confirmGame(peer_id: PeerId) -> bool:
     on peer_id:
-        res <- Cribbage.confirm()
+        res <- Cribbage.confirm(%init_peer_id%)
     <- res
 
 func dealRound(peer_id: PeerId, cards: []Card) -> bool:
