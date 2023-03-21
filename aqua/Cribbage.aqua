@@ -11,6 +11,7 @@ data Player:
 service WaitingRoom("WaitingRoom"):
     join(peer_id: PeerId) -> bool
     request() -> []Player
+    play(peer_id: PeerId) -> bool
 
 service Cribbage("Cribbage"):
     confirm() -> bool
@@ -28,9 +29,14 @@ func joinGame(hub_peer_id: PeerId) -> bool:
         res <- WaitingRoom.join(%init_peer_id%)
     <- res
 
-func request(hub_peer_id: PeerId) -> []Player:
+func requestPlayers(hub_peer_id: PeerId) -> []Player:
     on hub_peer_id:
         res <- WaitingRoom.request()
+    <- res
+
+func playGame(hub_peer_id: PeerId) -> bool:
+    on hub_peer_id:
+        res <- WaitingRoom.play(%init_peer_id%)
     <- res
 
 func confirmGame(peer_id: PeerId) -> bool:

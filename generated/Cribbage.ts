@@ -119,6 +119,7 @@ export function registerCribbage(...args: any) {
 
 export interface WaitingRoomDef {
     join: (peer_id: string, callParams: CallParams$$<'peer_id'>) => boolean | Promise<boolean>;
+    play: (peer_id: string, callParams: CallParams$$<'peer_id'>) => boolean | Promise<boolean>;
     request: (callParams: CallParams$$<null>) => { peer_id: string; playing: boolean; }[] | Promise<{ peer_id: string; playing: boolean; }[]>;
 }
 export function registerWaitingRoom(service: WaitingRoomDef): void;
@@ -136,6 +137,27 @@ export function registerWaitingRoom(...args: any) {
         "tag" : "labeledProduct",
         "fields" : {
             "join" : {
+                "tag" : "arrow",
+                "domain" : {
+                    "tag" : "labeledProduct",
+                    "fields" : {
+                        "peer_id" : {
+                            "tag" : "scalar",
+                            "name" : "string"
+                        }
+                    }
+                },
+                "codomain" : {
+                    "tag" : "unlabeledProduct",
+                    "items" : [
+                        {
+                            "tag" : "scalar",
+                            "name" : "bool"
+                        }
+                    ]
+                }
+            },
+            "play" : {
                 "tag" : "arrow",
                 "domain" : {
                     "tag" : "labeledProduct",
@@ -361,18 +383,18 @@ export function confirmGame(...args: any) {
 
  
 
-export function request(
+export function playGame(
     hub_peer_id: string,
     config?: {ttl?: number}
-): Promise<{ peer_id: string; playing: boolean; }[]>;
+): Promise<boolean>;
 
-export function request(
+export function playGame(
     peer: FluencePeer,
     hub_peer_id: string,
     config?: {ttl?: number}
-): Promise<{ peer_id: string; playing: boolean; }[]>;
+): Promise<boolean>;
 
-export function request(...args: any) {
+export function playGame(...args: any) {
 
     let script = `
                     (xor
@@ -387,7 +409,7 @@ export function request(...args: any) {
                        )
                        (xor
                         (seq
-                         (call hub_peer_id ("WaitingRoom" "request") [] res)
+                         (call hub_peer_id ("WaitingRoom" "play") [%init_peer_id%] res)
                          (call -relay- ("op" "noop") [])
                         )
                         (seq
@@ -407,7 +429,7 @@ export function request(...args: any) {
     return callFunction$$(
         args,
         {
-    "functionName" : "request",
+    "functionName" : "playGame",
     "arrow" : {
         "tag" : "arrow",
         "domain" : {
@@ -423,21 +445,8 @@ export function request(...args: any) {
             "tag" : "unlabeledProduct",
             "items" : [
                 {
-                    "tag" : "array",
-                    "type" : {
-                        "tag" : "struct",
-                        "name" : "Player",
-                        "fields" : {
-                            "peer_id" : {
-                                "tag" : "scalar",
-                                "name" : "string"
-                            },
-                            "playing" : {
-                                "tag" : "scalar",
-                                "name" : "bool"
-                            }
-                        }
-                    }
+                    "tag" : "scalar",
+                    "name" : "bool"
                 }
             ]
         }
@@ -616,6 +625,103 @@ export function getRandom(...args: any) {
                 {
                     "tag" : "scalar",
                     "name" : "u64"
+                }
+            ]
+        }
+    },
+    "names" : {
+        "relay" : "-relay-",
+        "getDataSrv" : "getDataSrv",
+        "callbackSrv" : "callbackSrv",
+        "responseSrv" : "callbackSrv",
+        "responseFnName" : "response",
+        "errorHandlingSrv" : "errorHandlingSrv",
+        "errorFnName" : "error"
+    }
+},
+        script
+    )
+}
+
+ 
+
+export function requestPlayers(
+    hub_peer_id: string,
+    config?: {ttl?: number}
+): Promise<{ peer_id: string; playing: boolean; }[]>;
+
+export function requestPlayers(
+    peer: FluencePeer,
+    hub_peer_id: string,
+    config?: {ttl?: number}
+): Promise<{ peer_id: string; playing: boolean; }[]>;
+
+export function requestPlayers(...args: any) {
+
+    let script = `
+                    (xor
+                     (seq
+                      (seq
+                       (seq
+                        (seq
+                         (call %init_peer_id% ("getDataSrv" "-relay-") [] -relay-)
+                         (call %init_peer_id% ("getDataSrv" "hub_peer_id") [] hub_peer_id)
+                        )
+                        (call -relay- ("op" "noop") [])
+                       )
+                       (xor
+                        (seq
+                         (call hub_peer_id ("WaitingRoom" "request") [] res)
+                         (call -relay- ("op" "noop") [])
+                        )
+                        (seq
+                         (call -relay- ("op" "noop") [])
+                         (call %init_peer_id% ("errorHandlingSrv" "error") [%last_error% 1])
+                        )
+                       )
+                      )
+                      (xor
+                       (call %init_peer_id% ("callbackSrv" "response") [res])
+                       (call %init_peer_id% ("errorHandlingSrv" "error") [%last_error% 2])
+                      )
+                     )
+                     (call %init_peer_id% ("errorHandlingSrv" "error") [%last_error% 3])
+                    )
+    `
+    return callFunction$$(
+        args,
+        {
+    "functionName" : "requestPlayers",
+    "arrow" : {
+        "tag" : "arrow",
+        "domain" : {
+            "tag" : "labeledProduct",
+            "fields" : {
+                "hub_peer_id" : {
+                    "tag" : "scalar",
+                    "name" : "string"
+                }
+            }
+        },
+        "codomain" : {
+            "tag" : "unlabeledProduct",
+            "items" : [
+                {
+                    "tag" : "array",
+                    "type" : {
+                        "tag" : "struct",
+                        "name" : "Player",
+                        "fields" : {
+                            "peer_id" : {
+                                "tag" : "scalar",
+                                "name" : "string"
+                            },
+                            "playing" : {
+                                "tag" : "scalar",
+                                "name" : "bool"
+                            }
+                        }
+                    }
                 }
             ]
         }
