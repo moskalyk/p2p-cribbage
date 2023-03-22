@@ -18,7 +18,7 @@ import {
 
 export interface CribbageDef {
     confirm: (peer_id: string, callParams: CallParams$$<'peer_id'>) => boolean | Promise<boolean>;
-    deal: (cards: { denomination: string; suit: string; }[], callParams: CallParams$$<'cards'>) => boolean | Promise<boolean>;
+    deal: (card: { denomination: string; suit: string; }, callParams: CallParams$$<'card'>) => boolean | Promise<boolean>;
     starter: (callParams: CallParams$$<null>) => { denomination: string; suit: string; } | Promise<{ denomination: string; suit: string; }>;
 }
 export function registerCribbage(service: CribbageDef): void;
@@ -61,20 +61,17 @@ export function registerCribbage(...args: any) {
                 "domain" : {
                     "tag" : "labeledProduct",
                     "fields" : {
-                        "cards" : {
-                            "tag" : "array",
-                            "type" : {
-                                "tag" : "struct",
-                                "name" : "Card",
-                                "fields" : {
-                                    "denomination" : {
-                                        "tag" : "scalar",
-                                        "name" : "string"
-                                    },
-                                    "suit" : {
-                                        "tag" : "scalar",
-                                        "name" : "string"
-                                    }
+                        "card" : {
+                            "tag" : "struct",
+                            "name" : "Card",
+                            "fields" : {
+                                "denomination" : {
+                                    "tag" : "scalar",
+                                    "name" : "string"
+                                },
+                                "suit" : {
+                                    "tag" : "scalar",
+                                    "name" : "string"
                                 }
                             }
                         }
@@ -567,18 +564,18 @@ export function pullStarter(...args: any) {
 
  
 
-export function getRandom(
+export function getRelayTime(
     relay_id: string,
     config?: {ttl?: number}
 ): Promise<number>;
 
-export function getRandom(
+export function getRelayTime(
     peer: FluencePeer,
     relay_id: string,
     config?: {ttl?: number}
 ): Promise<number>;
 
-export function getRandom(...args: any) {
+export function getRelayTime(...args: any) {
 
     let script = `
                     (xor
@@ -613,7 +610,7 @@ export function getRandom(...args: any) {
     return callFunction$$(
         args,
         {
-    "functionName" : "getRandom",
+    "functionName" : "getRelayTime",
     "arrow" : {
         "tag" : "arrow",
         "domain" : {
@@ -746,18 +743,18 @@ export function requestPlayers(...args: any) {
     )
 }
 
- 
+export type DealRoundArgCard = { denomination: string; suit: string; } 
 
 export function dealRound(
     peer_id: string,
-    cards: { denomination: string; suit: string; }[],
+    card: DealRoundArgCard,
     config?: {ttl?: number}
 ): Promise<boolean>;
 
 export function dealRound(
     peer: FluencePeer,
     peer_id: string,
-    cards: { denomination: string; suit: string; }[],
+    card: DealRoundArgCard,
     config?: {ttl?: number}
 ): Promise<boolean>;
 
@@ -773,13 +770,13 @@ export function dealRound(...args: any) {
                           (call %init_peer_id% ("getDataSrv" "-relay-") [] -relay-)
                           (call %init_peer_id% ("getDataSrv" "peer_id") [] peer_id)
                          )
-                         (call %init_peer_id% ("getDataSrv" "cards") [] cards)
+                         (call %init_peer_id% ("getDataSrv" "card") [] card)
                         )
                         (call -relay- ("op" "noop") [])
                        )
                        (xor
                         (seq
-                         (call peer_id ("Cribbage" "deal") [cards] res)
+                         (call peer_id ("Cribbage" "deal") [card] res)
                          (call -relay- ("op" "noop") [])
                         )
                         (seq
@@ -809,20 +806,17 @@ export function dealRound(...args: any) {
                     "tag" : "scalar",
                     "name" : "string"
                 },
-                "cards" : {
-                    "tag" : "array",
-                    "type" : {
-                        "tag" : "struct",
-                        "name" : "Card",
-                        "fields" : {
-                            "denomination" : {
-                                "tag" : "scalar",
-                                "name" : "string"
-                            },
-                            "suit" : {
-                                "tag" : "scalar",
-                                "name" : "string"
-                            }
+                "card" : {
+                    "tag" : "struct",
+                    "name" : "Card",
+                    "fields" : {
+                        "denomination" : {
+                            "tag" : "scalar",
+                            "name" : "string"
+                        },
+                        "suit" : {
+                            "tag" : "scalar",
+                            "name" : "string"
                         }
                     }
                 }

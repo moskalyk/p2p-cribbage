@@ -137,9 +137,13 @@ aside path {
 }
 
 .hand {
-  left: 34vw;
+  left: 29vw;
   bottom: 80px;
   position: fixed;
+}
+
+.card-raised {
+  margin-top: -30px;
 }
 
 .home-card {

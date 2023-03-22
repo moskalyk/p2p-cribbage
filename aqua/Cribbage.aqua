@@ -15,11 +15,11 @@ service WaitingRoom("WaitingRoom"):
 
 service Cribbage("Cribbage"):
     confirm(peer_id: PeerId) -> bool
-    deal(cards: []Card) -> bool
+    deal(card: Card) -> bool
     starter() -> Card
     -- peg(peer_id: PeerId) -> Card
 
-func getRandom(relay_id: PeerId) -> u64:
+func getRelayTime(relay_id: PeerId) -> u64:
     on relay_id:
         ttl <- Peer.timestamp_ms()
     <- ttl
@@ -44,9 +44,9 @@ func confirmGame(peer_id: PeerId) -> bool:
         res <- Cribbage.confirm(%init_peer_id%)
     <- res
 
-func dealRound(peer_id: PeerId, cards: []Card) -> bool:
+func dealRound(peer_id: PeerId, card: Card) -> bool:
     on peer_id:
-        res <- Cribbage.deal(cards)
+        res <- Cribbage.deal(card)
     <- res
 
 func pullStarter(peer_id: PeerId) -> Card:
