@@ -5,6 +5,8 @@ import { Fluence } from '@fluencelabs/fluence';
 import { krasnodar } from '@fluencelabs/fluence-network-environment';
 import { sequence } from '0xsequence'
 
+import { registerPeer, registerAltPool, writeToPool, getPeers } from './generated/AltPool'
+
 import {requestPlayers, playGame, joinGame, dealRound, confirmGame} from './generated/Cribbage'
 
 import {
@@ -19,9 +21,20 @@ import { CodeMirror, useHighlighting, useKeydown, useStrudel, flash } from '@str
 
 import { getAudioContext, initAudioOnFirstClick, panic, webaudioOutput } from '@strudel.cycles/webaudio';
 
+const Hypercore = require('hypercore')
+const ram = require('random-access-memory')
+
+const core = new Hypercore(ram, {
+  valueEncoding: 'json' 
+})
+
+const BUNDLER_ID = '12D3KooWEV95Zxm31MeQZY8kapDeva5ajnx16SZ6iCAwESzrsA1a'
+
 const ir = require('./ir.js')
 
 let nonce = 0;
+let RELAY_INDEX = 0;
+
 const drawnDeck: any = []
 function Table (props: any) {
 
@@ -32,9 +45,72 @@ function Table (props: any) {
   const [init, setInit] = React.useState<boolean>(false)
   const [hand, setHand] = React.useState<any>([])
 
+  const bootUp = async () => {
+  //   await Fluence.start({
+  //     connectTo: krasnodar[RELAY_INDEX]
+  // })
+
+  registerAltPool({
+      write: async (peer_id: any, user_op: any, client: any) => {
+          console.log('writing')
+          // save to local
+          await core.append(user_op)
+          if(client){
+              // get all peers
+              const peers = await getPeers(BUNDLER_ID)
+              console.log(peers)
+              for (const peer of peers) {
+                  // write to peer
+                  if(peer != peer_id){
+                      try{
+                          console.log('write')
+                          const res = await writeToPool(user_op, peer, false, {ttl: 7000})
+                          console.log(res)
+                      }catch(e){
+                          console.log(e)
+                          return false
+                      }
+                  }
+              }
+          }
+          return true
+      },
+      read: async () => {
+          console.log('read')
+          const blob = []
+          for await (const key of core.createReadStream()) {
+              console.log(key)
+              blob.push(key)
+          }
+          // loop through
+          return blob
+      }
+  })
+
+  const res = await registerPeer(BUNDLER_ID)
+  console.log(res)
+
+  setInterval(async () => {
+      for await (const key of core.createReadStream()) {
+          console.log(key)
+      }
+  }, 2000)
+
+  console.log('connected', Fluence.getStatus().peerId)
+}
+
+  const userOperation = async () => {
+    const peers = await getPeers(BUNDLER_ID)
+    const res = await writeToPool({address: JSON.stringify(hand[0]), nonce: Date.now()}, peers[peers.length - 1], true)
+  }
+
   React.useEffect(() => {
     setBackgroundColor(localStorage.getItem('background'))
     setPathColor(localStorage.getItem('path'))
+  })
+
+  React.useEffect(() => {
+    bootUp()
   })
 
   React.useEffect(() => {
@@ -44,8 +120,8 @@ function Table (props: any) {
       if(!init){
         let interval = setInterval(async function() {
 
-          console.log(krasnodar[0].peerId)
-          const random = await getRelayTime(krasnodar[0].peerId, {ttl: 10000})
+          console.log(krasnodar[RELAY_INDEX].peerId)
+          const random = await getRelayTime(krasnodar[RELAY_INDEX].peerId, {ttl: 10000})
           const leftOverDeck = deck.filter((item) => !drawnDeck.includes(item))
           const card = leftOverDeck[random % leftOverDeck.length]
           drawnDeck.push(card)
@@ -75,7 +151,7 @@ function Table (props: any) {
       }
   }, [hand])
 
-  const selected = (index: number) => {
+  const selected = async (index: number) => {
     console.log('selected')
     let count = 0;
     let pass = false
@@ -92,6 +168,8 @@ function Table (props: any) {
       newArr[index].crib = !newArr[index].crib
       setHand(newArr)
     }
+    await userOperation()
+    console.log('sent operation')
   }
 
   return(
